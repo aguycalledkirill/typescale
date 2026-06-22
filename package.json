@@ -1,0 +1,16 @@
+{
+  "name": "figma-type-scale",
+  "version": "0.1.0",
+  "description": "A Figma plugin that applies a modular type scale and proportional spacing to selected text layers.",
+  "license": "MIT",
+  "scripts": {
+    "build": "esbuild code.ts --bundle --target=es2017 --outfile=code.js",
+    "watch": "esbuild code.ts --bundle --target=es2017 --outfile=code.js --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.100.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --bg: var(--figma-color-bg, #ffffff);
+        --bg-secondary: var(--figma-color-bg-secondary, #f5f5f5);
+        --text: var(--figma-color-text, #1a1a1a);
+        --text-secondary: var(--figma-color-text-secondary, #8c8c8c);
+        --border: var(--figma-color-border, #e6e6e6);
+        --accent: var(--figma-color-bg-brand, #0d99ff);
+        --accent-text: var(--figma-color-text-onbrand, #ffffff);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        font-size: 11px;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      .panel {
+        padding: 12px 16px 16px;
+      }
+
+      h2 {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-secondary);
+        margin: 0 0 8px;
+      }
+
+      .field {
+        margin-bottom: 14px;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+
+      select,
+      input[type="number"] {
+        width: 100%;
+        height: 30px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 11px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .row > * {
+        flex: 1;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+
+      .slider-value {
+        flex: 0 0 44px;
+        text-align: right;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .checkbox-row label {
+        margin: 0;
+      }
+
+      .checkbox-row input {
+        width: auto;
+        height: auto;
+      }
+
+      .preview {
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        max-height: 160px;
+        overflow: auto;
+      }
+
+      .preview-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 4px 0;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .preview-row .name {
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-right: 8px;
+      }
+
+      .preview-row .sizes {
+        color: var(--text-secondary);
+        flex: 0 0 auto;
+      }
+
+      .preview-row .arrow {
+        color: var(--text-secondary);
+        margin: 0 4px;
+      }
+
+      .preview-row .target {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .hint {
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      button {
+        width: 100%;
+        height: 36px;
+        border: none;
+        border-radius: 6px;
+        background: var(--accent);
+        color: var(--accent-text);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .live-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <div class="field">
+        <label for="ratio">Scale ratio</label>
+        <select id="ratio">
+          <option value="1.067">Minor second — 1.067</option>
+          <option value="1.125">Major second — 1.125</option>
+          <option value="1.2">Minor third — 1.200</option>
+          <option value="1.25" selected>Major third — 1.250</option>
+          <option value="1.333">Perfect fourth — 1.333</option>
+          <option value="1.414">Augmented fourth — 1.414</option>
+          <option value="1.5">Perfect fifth — 1.500</option>
+          <option value="1.618">Golden ratio — 1.618</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+
+      <div class="field" id="custom-ratio-field" style="display: none">
+        <label for="custom-ratio">Custom ratio</label>
+        <input
+          id="custom-ratio"
+          type="number"
+          min="1"
+          max="3"
+          step="0.001"
+          value="1.25"
+        />
+      </div>
+
+      <div class="field">
+        <label for="spacing">Spacing <span class="hint">(× lower font size)</span></label>
+        <div class="row">
+          <input id="spacing" type="range" min="0" max="2" step="0.05" value="0.5" />
+          <span class="slider-value" id="spacing-value">0.50×</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="checkbox-row">
+          <input id="apply-line-height" type="checkbox" />
+          <label for="apply-line-height">Set line height</label>
+        </div>
+        <div class="row" id="line-height-row" style="display: none; margin-top: 8px">
+          <input id="line-height" type="range" min="1" max="2" step="0.05" value="1.2" />
+          <span class="slider-value" id="line-height-value">1.20×</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="rounding">Round sizes to</label>
+        <select id="rounding">
+          <option value="1" selected>Whole pixels</option>
+          <option value="0.5">Half pixels</option>
+          <option value="0.1">Tenths</option>
+          <option value="0">No rounding</option>
+        </select>
+      </div>
+
+      <h2>Preview</h2>
+      <div class="preview" id="preview">
+        <div class="hint" id="preview-empty">
+          Select two or more text layers to begin.
+        </div>
+      </div>
+
+      <button id="apply" disabled>Apply scale</button>
+      <p class="hint" style="margin: 10px 0 0">
+        Largest layer is the anchor and keeps its size. Smaller layers step down
+        the scale. Undo with Cmd/Ctrl+Z.
+      </p>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      const ratioSel = $("ratio");
+      const customField = $("custom-ratio-field");
+      const customRatio = $("custom-ratio");
+      const spacing = $("spacing");
+      const spacingValue = $("spacing-value");
+      const applyLineHeight = $("apply-line-height");
+      const lineHeightRow = $("line-height-row");
+      const lineHeight = $("line-height");
+      const lineHeightValue = $("line-height-value");
+      const rounding = $("rounding");
+      const preview = $("preview");
+      const applyBtn = $("apply");
+
+      let selectionCount = 0;
+
+      function currentRatio() {
+        if (ratioSel.value === "custom") {
+          return parseFloat(customRatio.value) || 1.25;
+        }
+        return parseFloat(ratioSel.value);
+      }
+
+      function gatherSettings() {
+        return {
+          ratio: currentRatio(),
+          spacing: parseFloat(spacing.value),
+          applyLineHeight: applyLineHeight.checked,
+          lineHeight: parseFloat(lineHeight.value),
+          rounding: parseFloat(rounding.value),
+        };
+      }
+
+      function syncLabels() {
+        spacingValue.textContent = parseFloat(spacing.value).toFixed(2) + "×";
+        lineHeightValue.textContent =
+          parseFloat(lineHeight.value).toFixed(2) + "×";
+        customField.style.display =
+          ratioSel.value === "custom" ? "block" : "none";
+        lineHeightRow.style.display = applyLineHeight.checked ? "flex" : "none";
+      }
+
+      function post(type) {
+        parent.postMessage(
+          { pluginMessage: { type, settings: gatherSettings() } },
+          "*"
+        );
+      }
+
+      function previewOnly() {
+        syncLabels();
+        post("preview");
+      }
+
+      function applyNow() {
+        syncLabels();
+        if (selectionCount >= 2) post("apply");
+      }
+
+      // Recompute the preview on any input; apply on "change" (e.g. slider
+      // release, dropdown commit) so we don't thrash font loading mid-drag.
+      [ratioSel, customRatio, rounding].forEach((el) =>
+        el.addEventListener("change", applyNow)
+      );
+      [spacing, lineHeight].forEach((el) => {
+        el.addEventListener("input", previewOnly);
+        el.addEventListener("change", applyNow);
+      });
+      applyLineHeight.addEventListener("change", applyNow);
+      customRatio.addEventListener("input", previewOnly);
+
+      applyBtn.addEventListener("click", applyNow);
+
+      function renderPreview(layers) {
+        if (!layers || layers.length === 0) {
+          preview.innerHTML =
+            '<div class="hint" id="preview-empty">Select two or more text layers to begin.</div>';
+          return;
+        }
+        preview.innerHTML = layers
+          .map(
+            (l) =>
+              '<div class="preview-row"><span class="name">' +
+              escapeHtml(l.name) +
+              '</span><span class="sizes">' +
+              l.currentSize +
+              '<span class="arrow">→</span><span class="target">' +
+              l.targetSize +
+              " px</span></span></div>"
+          )
+          .join("");
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
+      }
+
+      function applySettingsToUi(s) {
+        const presets = [
+          "1.067", "1.125", "1.2", "1.25", "1.333", "1.414", "1.5", "1.618",
+        ];
+        const ratioStr = String(s.ratio);
+        if (presets.indexOf(ratioStr) >= 0) {
+          ratioSel.value = ratioStr;
+        } else {
+          ratioSel.value = "custom";
+          customRatio.value = s.ratio;
+        }
+        spacing.value = s.spacing;
+        applyLineHeight.checked = s.applyLineHeight;
+        lineHeight.value = s.lineHeight;
+        rounding.value = String(s.rounding);
+        syncLabels();
+      }
+
+      onmessage = (event) => {
+        const msg = event.data.pluginMessage;
+        if (!msg) return;
+        if (msg.type === "settings") {
+          applySettingsToUi(msg.settings);
+        } else if (msg.type === "selection") {
+          selectionCount = msg.count;
+          applyBtn.disabled = msg.count < 2;
+          if (msg.count < 2) {
+            preview.innerHTML =
+              '<div class="hint">Select two or more text layers to begin. ' +
+              "(" +
+              msg.count +
+              " selected)</div>";
+          } else {
+            renderPreview(msg.layers);
+          }
+        }
+      };
+
+      syncLabels();
+      parent.postMessage({ pluginMessage: { type: "ready" } }, "*");
+    </script>
+  </body>
+</html>

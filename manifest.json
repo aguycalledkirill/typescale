@@ -1,0 +1,13 @@
+{
+  "name": "Type Scale",
+  "id": "type-scale-plugin",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "capabilities": [],
+  "enableProposedApi": false,
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}
