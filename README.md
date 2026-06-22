@@ -1,38 +1,40 @@
 # Type Scale — Figma plugin
 
-Apply a modular type scale and proportional spacing to selected text layers.
+Build a coherent, repeatable typographic system and apply it to your selected
+text layers. Assign each layer a **role** (Headline, Body, Eyebrow…), and the
+plugin sizes, spaces, and optically tunes every layer from one shared system.
+Audition ratios and curves live; undo with Cmd/Ctrl+Z.
 
-Select two or more text layers (e.g. a headline and a subheading), pick a scale
-ratio, and the plugin resizes the smaller layers to step down the scale from the
-largest one — and sets the vertical gap between them proportionally. Audition
-different ratios and spacing live; undo with Cmd/Ctrl+Z.
+## What it does
 
-## How it works
+- **Roles ("what is what")** — select any number of text layers and label each one
+  via a dropdown. The largest layer auto-maps to the highest role; reassign freely.
+  Roles are fully custom (name + scale step + optional overrides) and seeded with a
+  deletable starter set.
+- **Modular scale** — each role sits on a step: `size = baseSize × ratio^step`.
+  Named ratios (minor second → golden) plus a custom slider.
+- **Optical leading** — line height interpolates from a body value at the base size
+  to a tighter display value at large sizes (tighter for big text, looser for
+  body).
+- **Optical tracking** — letter spacing follows the Inter "Dynamic Metrics" curve
+  (`-0.0223 + 0.185·e^(-0.1745·size)` em): negative at display sizes, positive for
+  small text. A strength control scales it.
+- **Spacing** — re-stacks the layers with either a **baseline grid** gap (multiples
+  of a base unit) or a **size-proportional** gap. Drives auto-layout `itemSpacing`
+  when the layers share an auto-layout parent.
+- **Per-role overrides** — line height, tracking, font weight, and text case can be
+  pinned per role, overriding the curves.
+- **Presets** — save the whole system (scale, curves, spacing, roles) and re-apply
+  it to any selection. Everything persists locally via `clientStorage`.
 
-- **Anchor:** the largest selected text layer keeps its size. It's the top of
-  the hierarchy (your headline).
-- **Steps:** each successively smaller layer is placed one step further down the
-  scale, i.e. `size = anchorSize / ratio^level`.
-- **Spacing:** layers are re-stacked top-to-bottom with a gap equal to
-  `spacing × (lower layer's font size)`. If the layers share an auto-layout
-  parent, the parent's `itemSpacing` is set instead of moving the layers.
-- **Line height (optional):** set each layer's line height to a multiple of its
-  font size.
-- **Rounding:** snap computed sizes to whole/half/tenth pixels, or leave exact.
+Everything is applied live as you adjust controls (debounced); `Cmd/Ctrl+Z` undoes.
 
-### Scale ratios
+## How sizing works
 
-| Name              | Ratio |
-| ----------------- | ----- |
-| Minor second      | 1.067 |
-| Major second      | 1.125 |
-| Minor third       | 1.200 |
-| Major third       | 1.250 |
-| Perfect fourth    | 1.333 |
-| Augmented fourth  | 1.414 |
-| Perfect fifth     | 1.500 |
-| Golden ratio      | 1.618 |
-| Custom            | any   |
+- The **base size** is the size of a role at step 0 (typically Body).
+- A role at step `n` is `baseSize × ratio^n`, rounded to your chosen precision.
+- Line height (multiplier) and tracking (percent, where 1em = 100%) are computed
+  from the size via the optical curves, unless the role overrides them.
 
 ## Develop
 
@@ -45,14 +47,20 @@ npm run typecheck  # type-check only
 
 ## Load in Figma
 
-1. Run `npm install && npm run build`.
-2. In the Figma desktop app: **Plugins → Development → Import plugin from
-   manifest…** and select `manifest.json` in this folder.
-3. Select two or more text layers and run **Plugins → Development → Type Scale**.
+1. `npm install && npm run build` (or use the pre-built `code.js`).
+2. Figma desktop app: **Plugins → Development → Import plugin from manifest…** and
+   select `manifest.json`.
+3. Select text layers and run **Plugins → Development → Type Scale**.
 
 ## Files
 
 - `manifest.json` — plugin manifest.
-- `code.ts` — main thread logic (selection, scale math, applying changes).
+- `code.ts` — main thread: scale math, roles, optical curves, apply, persistence.
 - `code.js` — bundled output loaded by Figma (built from `code.ts`).
 - `ui.html` — the plugin panel UI.
+
+## Not included (yet)
+
+Figma text styles, design-token / JSON / CSS export, and per-transition spacing
+(different gaps eyebrow→headline vs headline→body) are deliberately out of scope —
+straightforward follow-ups if wanted.

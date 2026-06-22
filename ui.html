@@ -4,399 +4,540 @@
     <meta charset="utf-8" />
     <style>
       :root {
-        --bg: var(--figma-color-bg, #ffffff);
-        --bg-secondary: var(--figma-color-bg-secondary, #f5f5f5);
+        --bg: var(--figma-color-bg, #fff);
+        --bg2: var(--figma-color-bg-secondary, #f5f5f5);
+        --bg3: var(--figma-color-bg-tertiary, #ebebeb);
         --text: var(--figma-color-text, #1a1a1a);
-        --text-secondary: var(--figma-color-text-secondary, #8c8c8c);
+        --text2: var(--figma-color-text-secondary, #8c8c8c);
         --border: var(--figma-color-border, #e6e6e6);
         --accent: var(--figma-color-bg-brand, #0d99ff);
-        --accent-text: var(--figma-color-text-onbrand, #ffffff);
+        --accent-text: var(--figma-color-text-onbrand, #fff);
+        --danger: var(--figma-color-text-danger, #e5484d);
       }
-
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
       body {
-        margin: 0;
-        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
-          sans-serif;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         font-size: 11px;
         color: var(--text);
         background: var(--bg);
+        display: flex;
+        flex-direction: column;
       }
+      .scroll { flex: 1; overflow-y: auto; padding: 0 12px 12px; }
 
-      .panel {
-        padding: 12px 16px 16px;
+      details {
+        border-bottom: 1px solid var(--border);
       }
-
-      h2 {
-        font-size: 11px;
+      summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 2px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        color: var(--text-secondary);
-        margin: 0 0 8px;
-      }
-
-      .field {
-        margin-bottom: 14px;
-      }
-
-      label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 6px;
-      }
-
-      select,
-      input[type="number"] {
-        width: 100%;
-        height: 30px;
-        padding: 0 8px;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        background: var(--bg);
-        color: var(--text);
-        font-size: 11px;
-      }
-
-      .row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .row > * {
-        flex: 1;
-      }
-
-      input[type="range"] {
-        width: 100%;
-        accent-color: var(--accent);
-      }
-
-      .slider-value {
-        flex: 0 0 44px;
-        text-align: right;
-        color: var(--text-secondary);
-        font-variant-numeric: tabular-nums;
-      }
-
-      .checkbox-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .checkbox-row label {
-        margin: 0;
-      }
-
-      .checkbox-row input {
-        width: auto;
-        height: auto;
-      }
-
-      .preview {
-        background: var(--bg-secondary);
-        border-radius: 6px;
-        padding: 10px 12px;
-        margin-bottom: 14px;
-        max-height: 160px;
-        overflow: auto;
-      }
-
-      .preview-row {
+        font-size: 10px;
+        color: var(--text2);
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
-        padding: 4px 0;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .preview-row .name {
-        color: var(--text);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-right: 8px;
-      }
-
-      .preview-row .sizes {
-        color: var(--text-secondary);
-        flex: 0 0 auto;
-      }
-
-      .preview-row .arrow {
-        color: var(--text-secondary);
-        margin: 0 4px;
-      }
-
-      .preview-row .target {
-        color: var(--text);
-        font-weight: 600;
-      }
-
-      .hint {
-        color: var(--text-secondary);
-        line-height: 1.4;
-      }
-
-      button {
-        width: 100%;
-        height: 36px;
-        border: none;
-        border-radius: 6px;
-        background: var(--accent);
-        color: var(--accent-text);
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-
-      .toolbar {
-        display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
+        user-select: none;
       }
+      summary::-webkit-details-marker { display: none; }
+      summary::after { content: "▸"; color: var(--text2); transition: transform .15s; }
+      details[open] > summary::after { transform: rotate(90deg); }
+      .section-body { padding: 2px 2px 12px; }
 
-      .live-toggle {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--text-secondary);
-        font-weight: 600;
+      label { display: block; font-weight: 600; margin: 10px 0 5px; }
+      .sub { color: var(--text2); font-weight: 400; }
+
+      input[type="number"], input[type="text"], select {
+        width: 100%; height: 28px; padding: 0 7px;
+        border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg); color: var(--text); font-size: 11px;
       }
+      input:focus, select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
+      .row { display: flex; align-items: center; gap: 8px; }
+      .row > * { flex: 1; min-width: 0; }
+      .grow2 { flex: 2; }
+      .slider-row { display: flex; align-items: center; gap: 8px; }
+      .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+      .slider-row input[type="number"] { flex: 0 0 64px; }
+
+      .check { display: flex; align-items: center; gap: 7px; margin: 10px 0 4px; }
+      .check input { width: auto; height: auto; }
+      .check label { margin: 0; }
+
+      .seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+      .seg button {
+        flex: 1; height: 28px; border: none; background: var(--bg);
+        color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer;
+      }
+      .seg button.active { background: var(--accent); color: var(--accent-text); }
+
+      /* Assignment list */
+      .assign-row {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px;
+        align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);
+      }
+      .assign-row:last-child { border-bottom: none; }
+      .layer-name {
+        font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .computed {
+        grid-column: 1 / -1; color: var(--text2); font-variant-numeric: tabular-nums;
+        font-size: 10px;
+      }
+      .computed b { color: var(--text); font-weight: 600; }
+      .empty { color: var(--text2); padding: 10px 2px; line-height: 1.5; }
+
+      /* Roles */
+      .role { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+      .role-head { display: flex; gap: 6px; align-items: center; padding: 7px; }
+      .role-head input.role-name { flex: 1; font-weight: 600; }
+      .role-head input.role-step { flex: 0 0 56px; text-align: center; }
+      .role-del {
+        flex: 0 0 26px; height: 28px; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg); color: var(--danger); cursor: pointer; font-size: 14px; line-height: 1;
+      }
+      .role-adv { padding: 0 7px 7px; }
+      .role-adv summary { padding: 4px 2px; text-transform: none; letter-spacing: 0; }
+      .adv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+      .mini { font-weight: 600; font-size: 10px; color: var(--text2); margin: 4px 0 3px; display: block; }
+
+      .btn {
+        width: 100%; height: 32px; border: none; border-radius: 6px; cursor: pointer;
+        background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: 12px;
+      }
+      .btn.secondary { background: var(--bg3); color: var(--text); }
+      .btn.small { height: 28px; font-size: 11px; }
+      .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+      .preset-row { display: flex; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+      .preset-row .pname { flex: 1; font-weight: 600; }
+      .preset-row button { flex: 0 0 auto; }
+
+      .footer { padding: 10px 12px; border-top: 1px solid var(--border); background: var(--bg); }
+      .hint { color: var(--text2); line-height: 1.45; margin: 8px 0 0; }
     </style>
   </head>
   <body>
-    <div class="panel">
-      <div class="field">
-        <label for="ratio">Scale ratio</label>
-        <select id="ratio">
-          <option value="1.067">Minor second — 1.067</option>
-          <option value="1.125">Major second — 1.125</option>
-          <option value="1.2">Minor third — 1.200</option>
-          <option value="1.25" selected>Major third — 1.250</option>
-          <option value="1.333">Perfect fourth — 1.333</option>
-          <option value="1.414">Augmented fourth — 1.414</option>
-          <option value="1.5">Perfect fifth — 1.500</option>
-          <option value="1.618">Golden ratio — 1.618</option>
-          <option value="custom">Custom…</option>
-        </select>
-      </div>
-
-      <div class="field" id="custom-ratio-field" style="display: none">
-        <label for="custom-ratio">Custom ratio</label>
-        <input
-          id="custom-ratio"
-          type="number"
-          min="1"
-          max="3"
-          step="0.001"
-          value="1.25"
-        />
-      </div>
-
-      <div class="field">
-        <label for="spacing">Spacing <span class="hint">(× lower font size)</span></label>
-        <div class="row">
-          <input id="spacing" type="range" min="0" max="2" step="0.05" value="0.5" />
-          <span class="slider-value" id="spacing-value">0.50×</span>
+    <div class="scroll">
+      <!-- ASSIGNMENT -->
+      <details open>
+        <summary>Assign roles</summary>
+        <div class="section-body" id="assign-list">
+          <div class="empty">Select two or more text layers to assign roles.</div>
         </div>
-      </div>
+      </details>
 
-      <div class="field">
-        <div class="checkbox-row">
-          <input id="apply-line-height" type="checkbox" />
-          <label for="apply-line-height">Set line height</label>
+      <!-- SYSTEM -->
+      <details open>
+        <summary>Scale</summary>
+        <div class="section-body">
+          <label>Base size <span class="sub">px (role step 0)</span></label>
+          <input type="number" id="baseSize" min="1" step="0.5" />
+
+          <label>Ratio</label>
+          <select id="ratioPreset">
+            <option value="1.067">Minor second — 1.067</option>
+            <option value="1.125">Major second — 1.125</option>
+            <option value="1.2">Minor third — 1.200</option>
+            <option value="1.25">Major third — 1.250</option>
+            <option value="1.333">Perfect fourth — 1.333</option>
+            <option value="1.414">Augmented fourth — 1.414</option>
+            <option value="1.5">Perfect fifth — 1.500</option>
+            <option value="1.618">Golden ratio — 1.618</option>
+          </select>
+          <div class="slider-row" style="margin-top:6px">
+            <input type="range" id="ratioRange" min="1.05" max="2" step="0.001" />
+            <input type="number" id="ratio" min="1" max="3" step="0.001" />
+          </div>
+
+          <label>Round sizes to</label>
+          <select id="rounding">
+            <option value="1">Whole pixels</option>
+            <option value="0.5">Half pixels</option>
+            <option value="0.1">Tenths</option>
+            <option value="0">No rounding</option>
+          </select>
         </div>
-        <div class="row" id="line-height-row" style="display: none; margin-top: 8px">
-          <input id="line-height" type="range" min="1" max="2" step="0.05" value="1.2" />
-          <span class="slider-value" id="line-height-value">1.20×</span>
+      </details>
+
+      <!-- LEADING -->
+      <details>
+        <summary>Leading (line height)</summary>
+        <div class="section-body">
+          <div class="check">
+            <input type="checkbox" id="leadEnabled" />
+            <label for="leadEnabled">Optical line height</label>
+          </div>
+          <p class="hint">Tighter for large text, looser for body — interpolated by size.</p>
+          <label>Body line height <span class="sub">× at base size</span></label>
+          <div class="slider-row">
+            <input type="range" id="bodyLHRange" min="1" max="2" step="0.01" />
+            <input type="number" id="bodyLH" min="0.8" max="3" step="0.01" />
+          </div>
+          <label>Display line height <span class="sub">× at display size</span></label>
+          <div class="slider-row">
+            <input type="range" id="displayLHRange" min="0.8" max="1.6" step="0.01" />
+            <input type="number" id="displayLH" min="0.8" max="3" step="0.01" />
+          </div>
+          <label>Display size <span class="sub">px where display LH is reached</span></label>
+          <input type="number" id="displaySize" min="1" step="1" />
         </div>
-      </div>
+      </details>
 
-      <div class="field">
-        <label for="rounding">Round sizes to</label>
-        <select id="rounding">
-          <option value="1" selected>Whole pixels</option>
-          <option value="0.5">Half pixels</option>
-          <option value="0.1">Tenths</option>
-          <option value="0">No rounding</option>
-        </select>
-      </div>
-
-      <h2>Preview</h2>
-      <div class="preview" id="preview">
-        <div class="hint" id="preview-empty">
-          Select two or more text layers to begin.
+      <!-- TRACKING -->
+      <details>
+        <summary>Tracking (letter spacing)</summary>
+        <div class="section-body">
+          <div class="check">
+            <input type="checkbox" id="trackEnabled" />
+            <label for="trackEnabled">Optical tracking</label>
+          </div>
+          <p class="hint">Inter Dynamic Metrics curve: negative at large sizes, positive for small text.</p>
+          <label>Strength <span class="sub">× the curve</span></label>
+          <div class="slider-row">
+            <input type="range" id="trackStrengthRange" min="0" max="2" step="0.05" />
+            <input type="number" id="trackStrength" min="0" max="3" step="0.05" />
+          </div>
         </div>
-      </div>
+      </details>
 
-      <button id="apply" disabled>Apply scale</button>
-      <p class="hint" style="margin: 10px 0 0">
-        Largest layer is the anchor and keeps its size. Smaller layers step down
-        the scale. Undo with Cmd/Ctrl+Z.
-      </p>
+      <!-- SPACING -->
+      <details>
+        <summary>Spacing</summary>
+        <div class="section-body">
+          <div class="check">
+            <input type="checkbox" id="spaceEnabled" />
+            <label for="spaceEnabled">Re-stack &amp; space layers</label>
+          </div>
+          <label>Mode</label>
+          <div class="seg" id="spaceMode">
+            <button data-mode="proportional">Proportional</button>
+            <button data-mode="grid">Baseline grid</button>
+          </div>
+          <div id="gridFields">
+            <label>Base unit <span class="sub">px</span></label>
+            <input type="number" id="baseUnit" min="1" step="1" />
+          </div>
+          <label id="amountLabel">Amount</label>
+          <div class="slider-row">
+            <input type="range" id="spaceAmountRange" min="0" max="3" step="0.05" />
+            <input type="number" id="spaceAmount" min="0" max="20" step="0.05" />
+          </div>
+        </div>
+      </details>
+
+      <!-- ROLES -->
+      <details>
+        <summary>Roles</summary>
+        <div class="section-body">
+          <div id="roles-list"></div>
+          <button class="btn secondary small" id="addRole">+ Add role</button>
+        </div>
+      </details>
+
+      <!-- PRESETS -->
+      <details>
+        <summary>Presets</summary>
+        <div class="section-body">
+          <p class="hint" style="margin-top:0">Save the whole system (scale, curves, spacing, roles) and re-apply it to any selection.</p>
+          <div class="row">
+            <input type="text" id="presetName" class="grow2" placeholder="Preset name" />
+            <button class="btn small" id="savePreset" style="flex:1">Save</button>
+          </div>
+          <div id="presets-list" style="margin-top:8px"></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="footer">
+      <button class="btn" id="apply" disabled>Apply to selection</button>
+      <p class="hint">Largest layer auto-maps to the highest role. Cmd/Ctrl+Z undoes.</p>
     </div>
 
     <script>
       const $ = (id) => document.getElementById(id);
 
-      const ratioSel = $("ratio");
-      const customField = $("custom-ratio-field");
-      const customRatio = $("custom-ratio");
-      const spacing = $("spacing");
-      const spacingValue = $("spacing-value");
-      const applyLineHeight = $("apply-line-height");
-      const lineHeightRow = $("line-height-row");
-      const lineHeight = $("line-height");
-      const lineHeightValue = $("line-height-value");
-      const rounding = $("rounding");
-      const preview = $("preview");
-      const applyBtn = $("apply");
+      // ---- State ----
+      let system = null;
+      let roles = [];
+      let layers = []; // [{id,name,currentSize}]
+      let assignments = {}; // layerId -> roleId
+      let computed = {}; // layerId -> {size,lineHeight,trackingPct,gapAbove}
 
-      let selectionCount = 0;
+      const DEFAULT_OVERRIDES = () => ({ lineHeight: null, trackingPct: null, weight: null, textCase: null });
 
-      function currentRatio() {
-        if (ratioSel.value === "custom") {
-          return parseFloat(customRatio.value) || 1.25;
-        }
-        return parseFloat(ratioSel.value);
+      // ---- Messaging ----
+      function send(type, extra) {
+        parent.postMessage({ pluginMessage: Object.assign({ type }, extra) }, "*");
+      }
+      let applyTimer = null;
+      function scheduleApply() {
+        cancelApply();
+        applyTimer = setTimeout(() => {
+          send("apply", { system, roles, assignments });
+        }, 150);
+      }
+      function cancelApply() { if (applyTimer) { clearTimeout(applyTimer); applyTimer = null; } }
+      function preview() { send("preview", { system, roles, assignments }); }
+
+      // ---- System control wiring ----
+      function bindNumber(id, getter, setter, opts) {
+        const el = $(id);
+        el.addEventListener("input", () => {
+          const v = parseFloat(el.value);
+          if (isNaN(v)) return;
+          setter(v);
+          if (opts && opts.rangeId) $(opts.rangeId).value = v;
+          scheduleApply();
+        });
+      }
+      function bindRange(id, numId, setter) {
+        const el = $(id);
+        el.addEventListener("input", () => {
+          const v = parseFloat(el.value);
+          setter(v);
+          $(numId).value = round3(v);
+          scheduleApply();
+        });
+      }
+      function round3(v) { return Math.round(v * 1000) / 1000; }
+
+      function wireSystem() {
+        bindNumber("baseSize", () => system.baseSize, (v) => (system.baseSize = v));
+        bindNumber("ratio", () => system.ratio, (v) => (system.ratio = v), { rangeId: "ratioRange" });
+        bindRange("ratioRange", "ratio", (v) => (system.ratio = v));
+        $("ratioPreset").addEventListener("change", () => {
+          const v = parseFloat($("ratioPreset").value);
+          system.ratio = v; $("ratio").value = v; $("ratioRange").value = v; scheduleApply();
+        });
+        $("rounding").addEventListener("change", () => { system.rounding = parseFloat($("rounding").value); scheduleApply(); });
+
+        $("leadEnabled").addEventListener("change", () => { system.leading.enabled = $("leadEnabled").checked; scheduleApply(); });
+        bindNumber("bodyLH", null, (v) => (system.leading.bodyLH = v), { rangeId: "bodyLHRange" });
+        bindRange("bodyLHRange", "bodyLH", (v) => (system.leading.bodyLH = v));
+        bindNumber("displayLH", null, (v) => (system.leading.displayLH = v), { rangeId: "displayLHRange" });
+        bindRange("displayLHRange", "displayLH", (v) => (system.leading.displayLH = v));
+        bindNumber("displaySize", null, (v) => (system.leading.displaySize = v));
+
+        $("trackEnabled").addEventListener("change", () => { system.trackingEnabled = $("trackEnabled").checked; scheduleApply(); });
+        bindNumber("trackStrength", null, (v) => (system.trackingStrength = v), { rangeId: "trackStrengthRange" });
+        bindRange("trackStrengthRange", "trackStrength", (v) => (system.trackingStrength = v));
+
+        $("spaceEnabled").addEventListener("change", () => { system.spacingEnabled = $("spaceEnabled").checked; scheduleApply(); });
+        $("spaceMode").querySelectorAll("button").forEach((b) => {
+          b.addEventListener("click", () => { system.spacingMode = b.dataset.mode; renderSpaceMode(); scheduleApply(); });
+        });
+        bindNumber("baseUnit", null, (v) => (system.baseUnit = v));
+        bindNumber("spaceAmount", null, (v) => (system.spacingAmount = v), { rangeId: "spaceAmountRange" });
+        bindRange("spaceAmountRange", "spaceAmount", (v) => (system.spacingAmount = v));
+
+        $("addRole").addEventListener("click", addRole);
+        $("apply").addEventListener("click", () => { cancelApply(); send("apply", { system, roles, assignments }); });
+        $("savePreset").addEventListener("click", savePreset);
       }
 
-      function gatherSettings() {
-        return {
-          ratio: currentRatio(),
-          spacing: parseFloat(spacing.value),
-          applyLineHeight: applyLineHeight.checked,
-          lineHeight: parseFloat(lineHeight.value),
-          rounding: parseFloat(rounding.value),
-        };
+      // ---- Render system values into inputs ----
+      function fillSystem() {
+        $("baseSize").value = system.baseSize;
+        $("ratio").value = system.ratio;
+        $("ratioRange").value = system.ratio;
+        const presetMatch = ["1.067","1.125","1.2","1.25","1.333","1.414","1.5","1.618"].indexOf(String(system.ratio));
+        if (presetMatch >= 0) $("ratioPreset").value = String(system.ratio);
+        $("rounding").value = String(system.rounding);
+        $("leadEnabled").checked = system.leading.enabled;
+        $("bodyLH").value = system.leading.bodyLH; $("bodyLHRange").value = system.leading.bodyLH;
+        $("displayLH").value = system.leading.displayLH; $("displayLHRange").value = system.leading.displayLH;
+        $("displaySize").value = system.leading.displaySize;
+        $("trackEnabled").checked = system.trackingEnabled;
+        $("trackStrength").value = system.trackingStrength; $("trackStrengthRange").value = system.trackingStrength;
+        $("spaceEnabled").checked = system.spacingEnabled;
+        $("baseUnit").value = system.baseUnit;
+        $("spaceAmount").value = system.spacingAmount; $("spaceAmountRange").value = system.spacingAmount;
+        renderSpaceMode();
       }
 
-      function syncLabels() {
-        spacingValue.textContent = parseFloat(spacing.value).toFixed(2) + "×";
-        lineHeightValue.textContent =
-          parseFloat(lineHeight.value).toFixed(2) + "×";
-        customField.style.display =
-          ratioSel.value === "custom" ? "block" : "none";
-        lineHeightRow.style.display = applyLineHeight.checked ? "flex" : "none";
+      function renderSpaceMode() {
+        $("spaceMode").querySelectorAll("button").forEach((b) => {
+          b.classList.toggle("active", b.dataset.mode === system.spacingMode);
+        });
+        $("gridFields").style.display = system.spacingMode === "grid" ? "block" : "none";
+        $("amountLabel").innerHTML = system.spacingMode === "grid"
+          ? 'Amount <span class="sub">× base unit</span>'
+          : 'Amount <span class="sub">× lower font size</span>';
       }
 
-      function post(type) {
-        parent.postMessage(
-          { pluginMessage: { type, settings: gatherSettings() } },
-          "*"
-        );
+      // ---- Roles editor ----
+      function uid() { return "r-" + Math.random().toString(36).slice(2, 8); }
+      function addRole() {
+        roles.push({ id: uid(), name: "New role", step: 0, overrides: DEFAULT_OVERRIDES() });
+        renderRoles(); renderAssignments(); scheduleApply();
+      }
+      const CASES = [["", "Keep"], ["ORIGINAL", "Original"], ["UPPER", "UPPER"], ["LOWER", "lower"], ["TITLE", "Title"]];
+
+      function renderRoles() {
+        const wrap = $("roles-list");
+        wrap.innerHTML = "";
+        roles.forEach((role, i) => {
+          const el = document.createElement("div");
+          el.className = "role";
+          const caseOpts = CASES.map(([v, t]) =>
+            `<option value="${v}" ${(role.overrides.textCase || "") === v ? "selected" : ""}>${t}</option>`
+          ).join("");
+          el.innerHTML =
+            '<div class="role-head">' +
+              `<input class="role-name" type="text" value="${esc(role.name)}" data-i="${i}" data-k="name" />` +
+              `<input class="role-step" type="number" step="1" value="${role.step}" data-i="${i}" data-k="step" title="scale step" />` +
+              `<button class="role-del" data-i="${i}" title="Delete role">×</button>` +
+            '</div>' +
+            '<details class="role-adv"><summary>Overrides</summary><div class="adv-grid">' +
+              `<div><span class="mini">Case</span><select data-i="${i}" data-k="textCase">${caseOpts}</select></div>` +
+              `<div><span class="mini">Weight</span><input type="text" placeholder="keep" value="${esc(role.overrides.weight || "")}" data-i="${i}" data-k="weight" /></div>` +
+              `<div><span class="mini">Line height ×</span><input type="number" step="0.01" placeholder="auto" value="${role.overrides.lineHeight ?? ""}" data-i="${i}" data-k="lineHeight" /></div>` +
+              `<div><span class="mini">Tracking %</span><input type="number" step="0.1" placeholder="auto" value="${role.overrides.trackingPct ?? ""}" data-i="${i}" data-k="trackingPct" /></div>` +
+            '</div></details>';
+          wrap.appendChild(el);
+        });
+
+        wrap.querySelectorAll("input, select").forEach((inp) => {
+          inp.addEventListener("input", () => {
+            const i = +inp.dataset.i, k = inp.dataset.k;
+            if (k === "name" || k === "weight" || k === "textCase") {
+              const val = inp.value.trim();
+              if (k === "name") roles[i].name = inp.value;
+              else roles[i].overrides[k] = val === "" ? null : val;
+              if (k === "name") renderAssignments();
+            } else if (k === "step") {
+              roles[i].step = parseInt(inp.value, 10) || 0;
+            } else {
+              roles[i].overrides[k] = inp.value === "" ? null : parseFloat(inp.value);
+            }
+            scheduleApply();
+          });
+        });
+        wrap.querySelectorAll(".role-del").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const i = +btn.dataset.i;
+            const removed = roles[i].id;
+            roles.splice(i, 1);
+            // Drop assignments pointing at the removed role.
+            Object.keys(assignments).forEach((lid) => { if (assignments[lid] === removed) delete assignments[lid]; });
+            renderRoles(); renderAssignments(); scheduleApply();
+          });
+        });
       }
 
-      function previewOnly() {
-        syncLabels();
-        post("preview");
+      // ---- Assignment ----
+      function autoGuess() {
+        const sortedLayers = layers.slice().sort((a, b) => b.currentSize - a.currentSize);
+        const sortedRoles = roles.slice().sort((a, b) => b.step - a.step);
+        sortedLayers.forEach((layer, i) => {
+          if (!assignments[layer.id]) {
+            const role = sortedRoles[Math.min(i, sortedRoles.length - 1)];
+            if (role) assignments[layer.id] = role.id;
+          }
+        });
       }
 
-      function applyNow() {
-        syncLabels();
-        if (selectionCount >= 2) post("apply");
-      }
-
-      // Recompute the preview on any input; apply on "change" (e.g. slider
-      // release, dropdown commit) so we don't thrash font loading mid-drag.
-      [ratioSel, customRatio, rounding].forEach((el) =>
-        el.addEventListener("change", applyNow)
-      );
-      [spacing, lineHeight].forEach((el) => {
-        el.addEventListener("input", previewOnly);
-        el.addEventListener("change", applyNow);
-      });
-      applyLineHeight.addEventListener("change", applyNow);
-      customRatio.addEventListener("input", previewOnly);
-
-      applyBtn.addEventListener("click", applyNow);
-
-      function renderPreview(layers) {
-        if (!layers || layers.length === 0) {
-          preview.innerHTML =
-            '<div class="hint" id="preview-empty">Select two or more text layers to begin.</div>';
+      function renderAssignments() {
+        const wrap = $("assign-list");
+        if (layers.length === 0) {
+          wrap.innerHTML = '<div class="empty">Select one or more text layers to assign roles.</div>';
+          $("apply").disabled = true;
           return;
         }
-        preview.innerHTML = layers
-          .map(
-            (l) =>
-              '<div class="preview-row"><span class="name">' +
-              escapeHtml(l.name) +
-              '</span><span class="sizes">' +
-              l.currentSize +
-              '<span class="arrow">→</span><span class="target">' +
-              l.targetSize +
-              " px</span></span></div>"
-          )
-          .join("");
+        $("apply").disabled = false;
+        const roleOpts = (sel) =>
+          '<option value="">— none —</option>' +
+          roles.map((r) => `<option value="${r.id}" ${sel === r.id ? "selected" : ""}>${esc(r.name)} (${r.step >= 0 ? "+" : ""}${r.step})</option>`).join("");
+
+        wrap.innerHTML = layers.map((l) => {
+          const c = computed[l.id];
+          const cline = c
+            ? `→ <b>${c.size}px</b>` +
+              (c.lineHeight != null ? ` · LH ${round2(c.lineHeight)}×` : "") +
+              (c.trackingPct != null ? ` · ${c.trackingPct > 0 ? "+" : ""}${round2(c.trackingPct)}%` : "") +
+              (c.gapAbove != null ? ` · gap ${c.gapAbove}px` : "")
+            : '<span class="sub">unassigned</span>';
+          return (
+            '<div class="assign-row">' +
+              `<div class="layer-name" title="${esc(l.name)}">${esc(l.name)}</div>` +
+              `<select data-lid="${esc(l.id)}">${roleOpts(assignments[l.id] || "")}</select>` +
+              `<div class="computed">${cline} <span class="sub">(now ${l.currentSize}px)</span></div>` +
+            '</div>'
+          );
+        }).join("");
+
+        wrap.querySelectorAll("select").forEach((sel) => {
+          sel.addEventListener("change", () => {
+            const lid = sel.dataset.lid;
+            if (sel.value === "") delete assignments[lid];
+            else assignments[lid] = sel.value;
+            scheduleApply();
+          });
+        });
       }
 
-      function escapeHtml(s) {
-        return String(s).replace(
-          /[&<>"']/g,
-          (c) =>
-            ({
-              "&": "&amp;",
-              "<": "&lt;",
-              ">": "&gt;",
-              '"': "&quot;",
-              "'": "&#39;",
-            }[c])
-        );
+      // ---- Presets ----
+      function savePreset() {
+        const name = $("presetName").value.trim();
+        if (!name) return;
+        send("save-preset", { name, system, roles });
+        $("presetName").value = "";
+      }
+      function renderPresets(names) {
+        const wrap = $("presets-list");
+        if (!names || names.length === 0) { wrap.innerHTML = '<div class="empty">No saved presets yet.</div>'; return; }
+        wrap.innerHTML = names.map((n) =>
+          '<div class="preset-row">' +
+            `<span class="pname">${esc(n)}</span>` +
+            `<button class="btn secondary small" data-load="${esc(n)}" style="flex:0 0 auto;padding:0 10px">Load</button>` +
+            `<button class="role-del" data-del="${esc(n)}" style="flex:0 0 26px">×</button>` +
+          '</div>'
+        ).join("");
+        wrap.querySelectorAll("[data-load]").forEach((b) => b.addEventListener("click", () => send("load-preset", { name: b.dataset.load })));
+        wrap.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => send("delete-preset", { name: b.dataset.del })));
       }
 
-      function applySettingsToUi(s) {
-        const presets = [
-          "1.067", "1.125", "1.2", "1.25", "1.333", "1.414", "1.5", "1.618",
-        ];
-        const ratioStr = String(s.ratio);
-        if (presets.indexOf(ratioStr) >= 0) {
-          ratioSel.value = ratioStr;
-        } else {
-          ratioSel.value = "custom";
-          customRatio.value = s.ratio;
-        }
-        spacing.value = s.spacing;
-        applyLineHeight.checked = s.applyLineHeight;
-        lineHeight.value = s.lineHeight;
-        rounding.value = String(s.rounding);
-        syncLabels();
+      // ---- Utils ----
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
       }
+      function round2(v) { return Math.round(v * 100) / 100; }
 
+      // ---- Inbound messages ----
       onmessage = (event) => {
         const msg = event.data.pluginMessage;
         if (!msg) return;
-        if (msg.type === "settings") {
-          applySettingsToUi(msg.settings);
+        if (msg.type === "init") {
+          system = msg.system; roles = msg.roles;
+          wireSystem(); fillSystem(); renderRoles(); renderPresets(msg.presets);
         } else if (msg.type === "selection") {
-          selectionCount = msg.count;
-          applyBtn.disabled = msg.count < 2;
-          if (msg.count < 2) {
-            preview.innerHTML =
-              '<div class="hint">Select two or more text layers to begin. ' +
-              "(" +
-              msg.count +
-              " selected)</div>";
-          } else {
-            renderPreview(msg.layers);
-          }
+          layers = msg.layers;
+          // prune assignments for layers no longer selected
+          const ids = new Set(layers.map((l) => l.id));
+          Object.keys(assignments).forEach((lid) => { if (!ids.has(lid)) delete assignments[lid]; });
+          autoGuess();
+          renderAssignments();
+          preview();
+        } else if (msg.type === "computed") {
+          computed = {};
+          msg.items.forEach((it) => { computed[it.id] = it; });
+          renderAssignments();
+        } else if (msg.type === "preset-loaded") {
+          system = msg.system; roles = msg.roles;
+          fillSystem(); renderRoles(); renderAssignments();
+          send("apply", { system, roles, assignments });
+        } else if (msg.type === "presets") {
+          renderPresets(msg.names);
         }
       };
 
-      syncLabels();
-      parent.postMessage({ pluginMessage: { type: "ready" } }, "*");
+      send("ready");
     </script>
   </body>
 </html>
