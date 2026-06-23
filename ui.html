@@ -85,6 +85,10 @@
       .layer-name {
         font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
+      .dot {
+        display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+        margin-right: 5px; vertical-align: middle; flex: 0 0 auto;
+      }
       .computed {
         grid-column: 1 / -1; color: var(--text2); font-variant-numeric: tabular-nums;
         font-size: 10px;
@@ -127,8 +131,15 @@
       <!-- ASSIGNMENT -->
       <details open>
         <summary>Assign roles</summary>
-        <div class="section-body" id="assign-list">
-          <div class="empty">Select two or more text layers to assign roles.</div>
+        <div class="section-body">
+          <div class="check">
+            <input type="checkbox" id="showBadges" checked />
+            <label for="showBadges">Show role badges on canvas</label>
+          </div>
+          <p class="hint" style="margin-top:0">Roles are detected from each layer's size. Swap any that's wrong.</p>
+          <div id="assign-list">
+            <div class="empty">Select one or more text layers to assign roles.</div>
+          </div>
         </div>
       </details>
 
@@ -256,7 +267,7 @@
 
     <div class="footer">
       <button class="btn" id="apply" disabled>Apply to selection</button>
-      <p class="hint">Largest layer auto-maps to the highest role. Cmd/Ctrl+Z undoes.</p>
+      <p class="hint">Roles detected by size; canvas badges show what's what. Cmd/Ctrl+Z undoes.</p>
     </div>
 
     <script>
@@ -267,7 +278,9 @@
       let roles = [];
       let layers = []; // [{id,name,currentSize}]
       let assignments = {}; // layerId -> roleId
+      let overridden = new Set(); // layerIds the user manually set (suppress auto-detect)
       let computed = {}; // layerId -> {size,lineHeight,trackingPct,gapAbove}
+      let showBadges = true;
 
       const DEFAULT_OVERRIDES = () => ({ lineHeight: null, trackingPct: null, weight: null, textCase: null });
 
@@ -284,6 +297,21 @@
       }
       function cancelApply() { if (applyTimer) { clearTimeout(applyTimer); applyTimer = null; } }
       function preview() { send("preview", { system, roles, assignments }); }
+      function syncBadges() { send("sync-badges", { assignments, roles, system, showBadges }); }
+
+      // Same color math as the canvas badges so the panel chip matches the pill.
+      function hslToRgb(h, s, l) {
+        const k = (n) => (n + h * 12) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+        return [f(0), f(8), f(4)];
+      }
+      function roleColorCss(roleId) {
+        let h = 0;
+        for (let i = 0; i < roleId.length; i++) h = (h * 31 + roleId.charCodeAt(i)) >>> 0;
+        const [r, g, b] = hslToRgb((h % 360) / 360, 0.68, 0.45);
+        return `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+      }
 
       // ---- System control wiring ----
       function bindNumber(id, getter, setter, opts) {
@@ -336,6 +364,7 @@
         bindNumber("spaceAmount", null, (v) => (system.spacingAmount = v), { rangeId: "spaceAmountRange" });
         bindRange("spaceAmountRange", "spaceAmount", (v) => (system.spacingAmount = v));
 
+        $("showBadges").addEventListener("change", () => { showBadges = $("showBadges").checked; syncBadges(); });
         $("addRole").addEventListener("click", addRole);
         $("apply").addEventListener("click", () => { cancelApply(); send("apply", { system, roles, assignments }); });
         $("savePreset").addEventListener("click", savePreset);
@@ -410,7 +439,7 @@
               const val = inp.value.trim();
               if (k === "name") roles[i].name = inp.value;
               else roles[i].overrides[k] = val === "" ? null : val;
-              if (k === "name") renderAssignments();
+              if (k === "name") { renderAssignments(); syncBadges(); }
             } else if (k === "step") {
               roles[i].step = parseInt(inp.value, 10) || 0;
             } else {
@@ -426,20 +455,18 @@
             roles.splice(i, 1);
             // Drop assignments pointing at the removed role.
             Object.keys(assignments).forEach((lid) => { if (assignments[lid] === removed) delete assignments[lid]; });
-            renderRoles(); renderAssignments(); scheduleApply();
+            renderRoles(); renderAssignments(); scheduleApply(); syncBadges();
           });
         });
       }
 
       // ---- Assignment ----
-      function autoGuess() {
-        const sortedLayers = layers.slice().sort((a, b) => b.currentSize - a.currentSize);
-        const sortedRoles = roles.slice().sort((a, b) => b.step - a.step);
-        sortedLayers.forEach((layer, i) => {
-          if (!assignments[layer.id]) {
-            const role = sortedRoles[Math.min(i, sortedRoles.length - 1)];
-            if (role) assignments[layer.id] = role.id;
-          }
+      // Merge size-aware suggestions from the main thread, but never clobber a
+      // role the user picked by hand (tracked in `overridden`).
+      function applySuggestions(suggestions) {
+        const sug = suggestions || {};
+        layers.forEach((l) => {
+          if (!overridden.has(l.id) && sug[l.id]) assignments[l.id] = sug[l.id];
         });
       }
 
@@ -457,6 +484,8 @@
 
         wrap.innerHTML = layers.map((l) => {
           const c = computed[l.id];
+          const assigned = assignments[l.id] || "";
+          const dot = assigned ? `<span class="dot" style="background:${roleColorCss(assigned)}"></span>` : "";
           const cline = c
             ? `→ <b>${c.size}px</b>` +
               (c.lineHeight != null ? ` · LH ${round2(c.lineHeight)}×` : "") +
@@ -465,8 +494,8 @@
             : '<span class="sub">unassigned</span>';
           return (
             '<div class="assign-row">' +
-              `<div class="layer-name" title="${esc(l.name)}">${esc(l.name)}</div>` +
-              `<select data-lid="${esc(l.id)}">${roleOpts(assignments[l.id] || "")}</select>` +
+              `<div class="layer-name" title="${esc(l.name)}">${dot}${esc(l.name)}</div>` +
+              `<select data-lid="${esc(l.id)}">${roleOpts(assigned)}</select>` +
               `<div class="computed">${cline} <span class="sub">(now ${l.currentSize}px)</span></div>` +
             '</div>'
           );
@@ -475,9 +504,12 @@
         wrap.querySelectorAll("select").forEach((sel) => {
           sel.addEventListener("change", () => {
             const lid = sel.dataset.lid;
+            overridden.add(lid); // user took control of this layer
             if (sel.value === "") delete assignments[lid];
             else assignments[lid] = sel.value;
+            renderAssignments();
             scheduleApply();
+            syncBadges();
           });
         });
       }
@@ -518,12 +550,14 @@
           wireSystem(); fillSystem(); renderRoles(); renderPresets(msg.presets);
         } else if (msg.type === "selection") {
           layers = msg.layers;
-          // prune assignments for layers no longer selected
+          // prune assignments / overrides for layers no longer selected
           const ids = new Set(layers.map((l) => l.id));
           Object.keys(assignments).forEach((lid) => { if (!ids.has(lid)) delete assignments[lid]; });
-          autoGuess();
+          overridden.forEach((lid) => { if (!ids.has(lid)) overridden.delete(lid); });
+          applySuggestions(msg.suggestions);
           renderAssignments();
           preview();
+          syncBadges();
         } else if (msg.type === "computed") {
           computed = {};
           msg.items.forEach((it) => { computed[it.id] = it; });
@@ -532,6 +566,7 @@
           system = msg.system; roles = msg.roles;
           fillSystem(); renderRoles(); renderAssignments();
           send("apply", { system, roles, assignments });
+          syncBadges();
         } else if (msg.type === "presets") {
           renderPresets(msg.names);
         }

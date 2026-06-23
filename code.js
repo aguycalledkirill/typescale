@@ -107,6 +107,93 @@
     const fonts = node.getRangeAllFontNames(0, node.characters.length);
     await Promise.all(fonts.map((f) => figma.loadFontAsync(f)));
   }
+  function suggestRoles(nodes) {
+    const out = {};
+    if (currentRoles.length === 0) return out;
+    for (const node of nodes) {
+      const size = representativeSize(node);
+      let best = currentRoles[0];
+      let bestDiff = Infinity;
+      for (const r of currentRoles) {
+        const diff = Math.abs(computeSize(r.step, currentSystem) - size);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = r;
+        }
+      }
+      out[node.id] = best.id;
+    }
+    return out;
+  }
+  var badgeNodes = [];
+  var showBadges = true;
+  function hslToRgb(h, s, l) {
+    const k = (n) => (n + h * 12) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return { r: f(0), g: f(8), b: f(4) };
+  }
+  function roleColor(roleId) {
+    let h = 0;
+    for (let i = 0; i < roleId.length; i++) h = h * 31 + roleId.charCodeAt(i) >>> 0;
+    return hslToRgb(h % 360 / 360, 0.68, 0.45);
+  }
+  function clearBadges() {
+    for (const b of badgeNodes) {
+      try {
+        b.remove();
+      } catch (e) {
+      }
+    }
+    badgeNodes = [];
+  }
+  async function drawBadges(assignments) {
+    clearBadges();
+    if (!showBadges) return;
+    const nodes = getSelectedTextNodes();
+    if (nodes.length === 0) return;
+    let font = { family: "Inter", style: "Medium" };
+    try {
+      await figma.loadFontAsync(font);
+    } catch (e) {
+      font = { family: "Roboto", style: "Regular" };
+      try {
+        await figma.loadFontAsync(font);
+      } catch (e2) {
+        return;
+      }
+    }
+    const rolesById = new Map(currentRoles.map((r) => [r.id, r]));
+    for (const node of nodes) {
+      const role = rolesById.get(assignments[node.id]);
+      if (!role) continue;
+      const box = node.absoluteBoundingBox;
+      if (!box) continue;
+      const badge = figma.createFrame();
+      badge.name = "\u27E6 type badge \u27E7";
+      badge.setPluginData("tsBadge", "1");
+      badge.layoutMode = "HORIZONTAL";
+      badge.primaryAxisSizingMode = "AUTO";
+      badge.counterAxisSizingMode = "AUTO";
+      badge.paddingLeft = 6;
+      badge.paddingRight = 6;
+      badge.paddingTop = 3;
+      badge.paddingBottom = 3;
+      badge.cornerRadius = 4;
+      badge.fills = [{ type: "SOLID", color: roleColor(role.id) }];
+      const label = figma.createText();
+      label.fontName = font;
+      label.fontSize = 11;
+      label.characters = role.name;
+      label.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+      badge.appendChild(label);
+      figma.currentPage.appendChild(badge);
+      badge.x = Math.round(box.x);
+      badge.y = Math.round(box.y - badge.height - 4);
+      badge.locked = true;
+      badgeNodes.push(badge);
+    }
+  }
   function buildPlan(nodes, sys, roles, assignments) {
     const rolesById = new Map(roles.map((r) => [r.id, r]));
     const items = [];
@@ -186,7 +273,8 @@
         id: n.id,
         name: n.name,
         currentSize: Math.round(representativeSize(n) * 10) / 10
-      }))
+      })),
+      suggestions: suggestRoles(nodes)
     });
   }
   function sendComputed(sys, roles, assignments) {
@@ -218,6 +306,18 @@
   figma.ui.onmessage = async (msg) => {
     switch (msg.type) {
       case "ready": {
+        try {
+          const orphans = figma.currentPage.findAll(
+            (n) => n.getPluginData("tsBadge") === "1"
+          );
+          for (const o of orphans) {
+            try {
+              o.remove();
+            } catch (e) {
+            }
+          }
+        } catch (e) {
+        }
         const saved = await figma.clientStorage.getAsync(STATE_KEY);
         if (saved && saved.system && saved.roles) {
           currentSystem = __spreadValues(__spreadValues({}, clone(DEFAULT_SYSTEM)), saved.system);
@@ -246,6 +346,14 @@
         await applyPlan(msg.system, msg.roles, msg.assignments || {});
         await persistState();
         sendComputed(msg.system, msg.roles, msg.assignments || {});
+        await drawBadges(msg.assignments || {});
+        return;
+      }
+      case "sync-badges": {
+        if (typeof msg.showBadges === "boolean") showBadges = msg.showBadges;
+        if (msg.roles) currentRoles = msg.roles;
+        if (msg.system) currentSystem = msg.system;
+        await drawBadges(msg.assignments || {});
         return;
       }
       case "save-preset": {
@@ -288,4 +396,5 @@
     }
   };
   figma.on("selectionchange", () => sendSelection());
+  figma.on("close", () => clearBadges());
 })();

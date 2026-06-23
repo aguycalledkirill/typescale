@@ -7,10 +7,12 @@ Audition ratios and curves live; undo with Cmd/Ctrl+Z.
 
 ## What it does
 
-- **Roles ("what is what")** — select any number of text layers and label each one
-  via a dropdown. The largest layer auto-maps to the highest role; reassign freely.
-  Roles are fully custom (name + scale step + optional overrides) and seeded with a
-  deletable starter set.
+- **Roles ("what is what")** — select any number of text layers and the plugin
+  **detects each one's role from its actual size** (nearest role on the scale), so a
+  16px paragraph reads as Body and a 48px line as Display. Each detected role shows
+  as a **color badge on canvas** plus a matching chip in the panel; swap any that's
+  wrong via the dropdown and your choice sticks. Roles are fully custom (name + scale
+  step + optional overrides) and seeded with a deletable starter set.
 - **Modular scale** — each role sits on a step: `size = baseSize × ratio^step`.
   Named ratios (minor second → golden) plus a custom slider.
 - **Optical leading** — line height interpolates from a body value at the base size

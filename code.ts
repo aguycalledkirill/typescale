@@ -176,6 +176,116 @@ async function loadFontsForNode(node: TextNode): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Role suggestion (nearest role by size) + on-canvas badges
+// ---------------------------------------------------------------------------
+
+// Size-aware detection: pick, per node, the role whose target size
+// (base * ratio^step) is closest to the node's actual size. This replaces the
+// old rank-based guess that always pushed the largest layer to the top role.
+function suggestRoles(nodes: TextNode[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (currentRoles.length === 0) return out;
+  for (const node of nodes) {
+    const size = representativeSize(node);
+    let best = currentRoles[0];
+    let bestDiff = Infinity;
+    for (const r of currentRoles) {
+      const diff = Math.abs(computeSize(r.step, currentSystem) - size);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = r;
+      }
+    }
+    out[node.id] = best.id;
+  }
+  return out;
+}
+
+let badgeNodes: SceneNode[] = [];
+let showBadges = true;
+
+function hslToRgb(h: number, s: number, l: number): RGB {
+  const k = (n: number) => (n + h * 12) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return { r: f(0), g: f(8), b: f(4) };
+}
+
+// Stable per-role color from its id, so the same role always reads the same
+// hue on canvas and in the panel chip.
+function roleColor(roleId: string): RGB {
+  let h = 0;
+  for (let i = 0; i < roleId.length; i++) h = (h * 31 + roleId.charCodeAt(i)) >>> 0;
+  return hslToRgb((h % 360) / 360, 0.68, 0.45);
+}
+
+function clearBadges(): void {
+  for (const b of badgeNodes) {
+    try {
+      b.remove();
+    } catch (e) {
+      // already removed
+    }
+  }
+  badgeNodes = [];
+}
+
+// Draw a small locked pill above each assigned text layer naming its role.
+async function drawBadges(assignments: Record<string, string>): Promise<void> {
+  clearBadges();
+  if (!showBadges) return;
+  const nodes = getSelectedTextNodes();
+  if (nodes.length === 0) return;
+
+  let font: FontName = { family: "Inter", style: "Medium" };
+  try {
+    await figma.loadFontAsync(font);
+  } catch (e) {
+    font = { family: "Roboto", style: "Regular" };
+    try {
+      await figma.loadFontAsync(font);
+    } catch (e2) {
+      return; // no usable font for labels
+    }
+  }
+
+  const rolesById = new Map(currentRoles.map((r) => [r.id, r]));
+  for (const node of nodes) {
+    const role = rolesById.get(assignments[node.id]);
+    if (!role) continue;
+    const box = node.absoluteBoundingBox;
+    if (!box) continue;
+
+    const badge = figma.createFrame();
+    badge.name = "⟦ type badge ⟧";
+    badge.setPluginData("tsBadge", "1");
+    badge.layoutMode = "HORIZONTAL";
+    badge.primaryAxisSizingMode = "AUTO";
+    badge.counterAxisSizingMode = "AUTO";
+    badge.paddingLeft = 6;
+    badge.paddingRight = 6;
+    badge.paddingTop = 3;
+    badge.paddingBottom = 3;
+    badge.cornerRadius = 4;
+    badge.fills = [{ type: "SOLID", color: roleColor(role.id) }];
+
+    const label = figma.createText();
+    label.fontName = font;
+    label.fontSize = 11;
+    label.characters = role.name;
+    label.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+    badge.appendChild(label);
+
+    figma.currentPage.appendChild(badge);
+    badge.x = Math.round(box.x);
+    badge.y = Math.round(box.y - badge.height - 4);
+    badge.locked = true;
+    badgeNodes.push(badge);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Plan
 // ---------------------------------------------------------------------------
 
@@ -319,6 +429,7 @@ function sendSelection(): void {
       name: n.name,
       currentSize: Math.round(representativeSize(n) * 10) / 10,
     })),
+    suggestions: suggestRoles(nodes),
   });
 }
 
@@ -359,6 +470,21 @@ figma.showUI(__html__, { width: 360, height: 640, themeColors: true });
 figma.ui.onmessage = async (msg: any) => {
   switch (msg.type) {
     case "ready": {
+      // Sweep any badges left behind by a previous (crashed) session.
+      try {
+        const orphans = figma.currentPage.findAll(
+          (n) => n.getPluginData("tsBadge") === "1"
+        );
+        for (const o of orphans) {
+          try {
+            o.remove();
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      } catch (e) {
+        /* ignore */
+      }
       const saved: PersistState | undefined = await figma.clientStorage.getAsync(STATE_KEY);
       if (saved && saved.system && saved.roles) {
         currentSystem = { ...clone(DEFAULT_SYSTEM), ...saved.system };
@@ -389,6 +515,15 @@ figma.ui.onmessage = async (msg: any) => {
       await applyPlan(msg.system, msg.roles, msg.assignments || {});
       await persistState();
       sendComputed(msg.system, msg.roles, msg.assignments || {});
+      await drawBadges(msg.assignments || {}); // re-pin badges after layout moves
+      return;
+    }
+
+    case "sync-badges": {
+      if (typeof msg.showBadges === "boolean") showBadges = msg.showBadges;
+      if (msg.roles) currentRoles = msg.roles;
+      if (msg.system) currentSystem = msg.system;
+      await drawBadges(msg.assignments || {});
       return;
     }
 
@@ -436,3 +571,4 @@ figma.ui.onmessage = async (msg: any) => {
 };
 
 figma.on("selectionchange", () => sendSelection());
+figma.on("close", () => clearBadges());
