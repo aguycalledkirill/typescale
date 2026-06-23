@@ -22,42 +22,63 @@
     baseSize: 16,
     ratio: 1.25,
     rounding: 1,
-    leading: { enabled: true, bodyLH: 1.5, displayLH: 1, displaySize: 48 },
+    snapStrength: 0.15,
+    leading: { enabled: true, bodyLH: 1.5, displayLH: 1.2, displaySize: 48 },
+    leadingPreset: "normal",
     trackingEnabled: true,
     trackingStrength: 1,
+    trackingPreset: "optical",
     spacingEnabled: true,
     spacingMode: "proportional",
     baseUnit: 8,
-    spacingAmount: 0.5
+    spacingAmount: 0.75,
+    spacingPreset: "normal"
   };
   function emptyOverrides() {
     return { lineHeight: null, trackingPct: null, weight: null, textCase: null };
   }
   function defaultRoles() {
     return [
-      { id: "r-display", name: "Display", step: 4, overrides: emptyOverrides() },
-      { id: "r-headline", name: "Headline", step: 3, overrides: emptyOverrides() },
-      { id: "r-title", name: "Title", step: 2, overrides: emptyOverrides() },
-      { id: "r-subhead", name: "Subhead", step: 1, overrides: emptyOverrides() },
-      { id: "r-body", name: "Body", step: 0, overrides: emptyOverrides() },
+      { id: "r-display", name: "Display", step: 4, isLabel: false, overrides: emptyOverrides() },
+      { id: "r-headline", name: "Headline", step: 3, isLabel: false, overrides: emptyOverrides() },
+      { id: "r-title", name: "Title", step: 2, isLabel: false, overrides: emptyOverrides() },
+      { id: "r-subhead", name: "Subhead", step: 1, isLabel: false, overrides: emptyOverrides() },
+      { id: "r-body", name: "Body", step: 0, isLabel: false, overrides: emptyOverrides() },
       {
         id: "r-eyebrow",
         name: "Eyebrow",
         step: -1,
+        isLabel: true,
         overrides: { lineHeight: null, trackingPct: 8, weight: null, textCase: "UPPER" }
       },
-      { id: "r-caption", name: "Caption", step: -1, overrides: emptyOverrides() }
+      { id: "r-caption", name: "Caption", step: -1, isLabel: true, overrides: emptyOverrides() }
     ];
   }
+  var NAMED_RATIOS = [1.067, 1.125, 1.2, 1.25, 1.333, 1.414, 1.5, 1.618];
   var TRACK_A = -0.0223;
   var TRACK_B = 0.185;
   var TRACK_C = -0.1745;
+  var LABEL_HUG_FACTOR = 0.4;
   function roundTo(value, step) {
     if (!step || step <= 0) return value;
     return Math.round(value / step) * step;
   }
-  function computeSize(step, sys) {
-    return roundTo(sys.baseSize * Math.pow(sys.ratio, step), sys.rounding);
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+  function logLerp(cur, target, t) {
+    if (cur <= 0) return target;
+    if (target <= 0) return cur;
+    return Math.exp(lerp(Math.log(cur), Math.log(target), t));
+  }
+  function rawSize(step, sys) {
+    return sys.baseSize * Math.pow(sys.ratio, step);
+  }
+  function computeSnappedSize(step, currentSize, sys) {
+    const target = rawSize(step, sys);
+    if (sys.snapStrength >= 0.999) return roundTo(target, sys.rounding);
+    if (sys.snapStrength <= 1e-3) return roundTo(currentSize, sys.rounding);
+    return roundTo(logLerp(currentSize, target, sys.snapStrength), sys.rounding);
   }
   function computeLineHeight(size, sys) {
     const l = sys.leading;
@@ -80,11 +101,47 @@
     const em = TRACK_A + TRACK_B * Math.exp(TRACK_C * size);
     return Math.round(sys.trackingStrength * em * 100 * 1e3) / 1e3;
   }
-  function computeGap(lowerSize, sys) {
-    if (sys.spacingMode === "grid") {
-      return Math.round(sys.spacingAmount * sys.baseUnit);
+  function nearestNamedRatio(r) {
+    let best = NAMED_RATIOS[0];
+    let bestErr = Infinity;
+    for (const cand of NAMED_RATIOS) {
+      const err = Math.abs(Math.log(cand) - Math.log(r));
+      if (err < bestErr) {
+        bestErr = err;
+        best = cand;
+      }
     }
-    return Math.round(sys.spacingAmount * lowerSize);
+    return best;
+  }
+  function detectScale(points, sys) {
+    const valid = points.filter((p) => p.size > 0);
+    const distinctSteps = new Set(valid.map((p) => p.step));
+    if (valid.length >= 2 && distinctSteps.size >= 2) {
+      const xs = valid.map((p) => p.step);
+      const ys = valid.map((p) => Math.log(p.size));
+      const n = xs.length;
+      const mx = xs.reduce((a, b) => a + b, 0) / n;
+      const my = ys.reduce((a, b) => a + b, 0) / n;
+      let num = 0;
+      let den = 0;
+      for (let i = 0; i < n; i++) {
+        num += (xs[i] - mx) * (ys[i] - my);
+        den += (xs[i] - mx) * (xs[i] - mx);
+      }
+      const slope = den === 0 ? 0 : num / den;
+      const ratio = nearestNamedRatio(Math.exp(slope));
+      const lr = Math.log(ratio);
+      const base = Math.exp(
+        valid.reduce((s, p) => s + (Math.log(p.size) - p.step * lr), 0) / n
+      );
+      return { baseSize: Math.round(base * 2) / 2, ratio, detected: true };
+    }
+    if (valid.length === 1) {
+      const p = valid[0];
+      const base = p.size / Math.pow(sys.ratio, p.step);
+      return { baseSize: Math.round(base * 2) / 2, ratio: sys.ratio, detected: true };
+    }
+    return { baseSize: sys.baseSize, ratio: sys.ratio, detected: false };
   }
   function getSelectedTextNodes() {
     return figma.currentPage.selection.filter(
@@ -106,24 +163,6 @@
     }
     const fonts = node.getRangeAllFontNames(0, node.characters.length);
     await Promise.all(fonts.map((f) => figma.loadFontAsync(f)));
-  }
-  function suggestRoles(nodes) {
-    const out = {};
-    if (currentRoles.length === 0) return out;
-    for (const node of nodes) {
-      const size = representativeSize(node);
-      let best = currentRoles[0];
-      let bestDiff = Infinity;
-      for (const r of currentRoles) {
-        const diff = Math.abs(computeSize(r.step, currentSystem) - size);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          best = r;
-        }
-      }
-      out[node.id] = best.id;
-    }
-    return out;
   }
   var badgeNodes = [];
   var showBadges = true;
@@ -184,7 +223,7 @@
       const label = figma.createText();
       label.fontName = font;
       label.fontSize = 11;
-      label.characters = role.name;
+      label.characters = role.isLabel ? role.name + " \xB7" : role.name;
       label.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
       badge.appendChild(label);
       figma.currentPage.appendChild(badge);
@@ -194,6 +233,16 @@
       badgeNodes.push(badge);
     }
   }
+  function gapBetween(upper, lower, sys) {
+    if (sys.spacingMode === "grid") {
+      const g = sys.spacingAmount * sys.baseUnit;
+      return Math.round(upper.role.isLabel ? Math.max(g * 0.5, sys.baseUnit / 2) : g);
+    }
+    if (upper.role.isLabel) {
+      return Math.round(LABEL_HUG_FACTOR * upper.size);
+    }
+    return Math.round(sys.spacingAmount * lower.size);
+  }
   function buildPlan(nodes, sys, roles, assignments) {
     const rolesById = new Map(roles.map((r) => [r.id, r]));
     const items = [];
@@ -202,7 +251,7 @@
       if (!roleId) continue;
       const role = rolesById.get(roleId);
       if (!role) continue;
-      const size = computeSize(role.step, sys);
+      const size = computeSnappedSize(role.step, representativeSize(node), sys);
       const lineHeight = role.overrides.lineHeight != null ? role.overrides.lineHeight : computeLineHeight(size, sys);
       const trackingPct = role.overrides.trackingPct != null ? role.overrides.trackingPct : computeTrackingPct(size, sys);
       items.push({ node, role, size, lineHeight, trackingPct, gapAbove: null });
@@ -210,7 +259,7 @@
     if (sys.spacingEnabled && items.length > 1) {
       const ordered = items.slice().sort((a, b) => a.node.y - b.node.y);
       for (let i = 1; i < ordered.length; i++) {
-        ordered[i].gapAbove = computeGap(ordered[i].size, sys);
+        ordered[i].gapAbove = gapBetween(ordered[i - 1], ordered[i], sys);
       }
     }
     return items;
@@ -247,13 +296,20 @@
     const parent = ordered[0].node.parent;
     const sameAutoLayoutParent = parent && "layoutMode" in parent && parent.layoutMode !== "NONE" && ordered.every((it) => it.node.parent === parent);
     if (sameAutoLayoutParent) {
-      const smallest = ordered.reduce((m, it) => Math.min(m, it.size), Infinity);
-      parent.itemSpacing = computeGap(smallest, sys);
+      let rep = 0;
+      for (let i = 1; i < ordered.length; i++) {
+        if (!ordered[i - 1].role.isLabel) {
+          rep = gapBetween(ordered[i - 1], ordered[i], sys);
+          break;
+        }
+      }
+      if (rep === 0) rep = gapBetween(ordered[0], ordered[1], sys);
+      parent.itemSpacing = rep;
     } else {
       for (let i = 1; i < ordered.length; i++) {
         const prev = ordered[i - 1].node;
         const curr = ordered[i].node;
-        const gap = ordered[i].gapAbove != null ? ordered[i].gapAbove : computeGap(ordered[i].size, sys);
+        const gap = ordered[i].gapAbove != null ? ordered[i].gapAbove : gapBetween(ordered[i - 1], ordered[i], sys);
         curr.y = prev.y + prev.height + gap;
       }
     }
@@ -265,6 +321,21 @@
   function clone(v) {
     return JSON.parse(JSON.stringify(v));
   }
+  function normalizeSystem(saved) {
+    const sys = __spreadValues(__spreadValues({}, clone(DEFAULT_SYSTEM)), saved || {});
+    sys.leading = __spreadValues(__spreadValues({}, DEFAULT_SYSTEM.leading), saved && saved.leading);
+    return sys;
+  }
+  function normalizeRoles(saved) {
+    if (!Array.isArray(saved)) return defaultRoles();
+    return saved.map((r) => ({
+      id: r.id,
+      name: r.name,
+      step: r.step,
+      isLabel: typeof r.isLabel === "boolean" ? r.isLabel : r.overrides && r.overrides.textCase === "UPPER" || false,
+      overrides: __spreadValues(__spreadValues({}, emptyOverrides()), r.overrides || {})
+    }));
+  }
   function sendSelection() {
     const nodes = getSelectedTextNodes();
     figma.ui.postMessage({
@@ -273,8 +344,7 @@
         id: n.id,
         name: n.name,
         currentSize: Math.round(representativeSize(n) * 10) / 10
-      })),
-      suggestions: suggestRoles(nodes)
+      }))
     });
   }
   function sendComputed(sys, roles, assignments) {
@@ -302,7 +372,7 @@
       roles: currentRoles
     });
   }
-  figma.showUI(__html__, { width: 360, height: 640, themeColors: true });
+  figma.showUI(__html__, { width: 360, height: 660, themeColors: true });
   figma.ui.onmessage = async (msg) => {
     switch (msg.type) {
       case "ready": {
@@ -320,9 +390,8 @@
         }
         const saved = await figma.clientStorage.getAsync(STATE_KEY);
         if (saved && saved.system && saved.roles) {
-          currentSystem = __spreadValues(__spreadValues({}, clone(DEFAULT_SYSTEM)), saved.system);
-          currentSystem.leading = __spreadValues(__spreadValues({}, DEFAULT_SYSTEM.leading), saved.system.leading);
-          currentRoles = saved.roles;
+          currentSystem = normalizeSystem(saved.system);
+          currentRoles = normalizeRoles(saved.roles);
         }
         const presets = await loadPresets();
         figma.ui.postMessage({
@@ -338,6 +407,24 @@
         currentSystem = msg.system;
         currentRoles = msg.roles;
         sendComputed(msg.system, msg.roles, msg.assignments || {});
+        return;
+      }
+      case "fit": {
+        const rolesById = new Map(msg.roles.map((r) => [r.id, r]));
+        const assignments = msg.assignments || {};
+        const points = [];
+        for (const node of getSelectedTextNodes()) {
+          const roleId = assignments[node.id];
+          const role = roleId ? rolesById.get(roleId) : void 0;
+          if (role) points.push({ step: role.step, size: representativeSize(node) });
+        }
+        const fit = detectScale(points, msg.system || currentSystem);
+        figma.ui.postMessage({
+          type: "fit",
+          baseSize: fit.baseSize,
+          ratio: fit.ratio,
+          detected: fit.detected
+        });
         return;
       }
       case "apply": {
@@ -367,9 +454,8 @@
         const presets = await loadPresets();
         const preset = presets[msg.name];
         if (preset) {
-          currentSystem = __spreadValues(__spreadValues({}, clone(DEFAULT_SYSTEM)), preset.system);
-          currentSystem.leading = __spreadValues(__spreadValues({}, DEFAULT_SYSTEM.leading), preset.system.leading);
-          currentRoles = preset.roles;
+          currentSystem = normalizeSystem(preset.system);
+          currentRoles = normalizeRoles(preset.roles);
           await persistState();
           figma.ui.postMessage({
             type: "preset-loaded",
